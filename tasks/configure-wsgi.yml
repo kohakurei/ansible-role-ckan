@@ -1,0 +1,37 @@
+---
+- name: Create virtualhost
+  copy:
+    src: ckan_default.conf
+    dest: /etc/apache2/sites-available/000-ckan_default.conf
+    mode: 0644
+  when: ansible_os_family == "Debian"
+
+- name: Enabled virtualhost
+  file:
+    src: /etc/apache2/sites-available/000-ckan_default.conf
+    dest: /etc/apache2/sites-enabled/000-ckan_default.conf
+    state: link
+
+#- name: Enabled virtualhost
+#  command: a2ensite ckan_default
+#  when: ansible_os_family == "Debian"
+
+- name: Restart service
+  service:
+    name: apache2
+    state: restarted
+  when: ansible_os_family == "Debian"
+
+# this process is Redhat distrobution
+- name: Create virtualhost
+  copy:
+    src: ckan_default.conf
+    dest: "/etc/httpd/conf.d/ckan_default.conf"
+    mode: 0644
+  when: ansible_os_family == "Redhat"
+
+- name: Restart service
+  service:
+    name: httpd
+    state: restarted
+  when : ansible_os_family == "Redhat"

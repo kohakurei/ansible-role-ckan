@@ -1,0 +1,21 @@
+---
+- name: Debian | Create user
+  user:
+    name: "{{ ckan_user_name }}"
+    home: "{{ ckan_home_directory }}"
+    shell: "/usr/sbin/nologin"
+    move_home: yes
+  when: ansible_os_family == "Debian"
+
+- name: Redhat | Create user
+  user:
+    name: "{{ ckan_user_name }}"
+    home: "{{ ckan_home_directory }}"
+    shell: "/sbin/nologin"
+    move_home: yes
+  when: ansible_os_family == "Redhat"
+
+- name: permission changed
+  file:
+    path: "{{ ckan_home_directory }}"
+    mode: 0755

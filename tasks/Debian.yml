@@ -1,0 +1,115 @@
+---
+- name: Update package
+  apt:
+    update_cache: yes
+
+- name: Ensure packages
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - "{{ ckan_packages }}"
+
+- include: create-user.yml
+
+# db createed from ansible role
+- include: create-database.yml
+
+- name: create virtualenv
+  become: true
+  become_user: "{{ ckan_user_name }}"
+  command: "virtualenv --no-site-packages {{ ckan_home_directory }}/default"
+  args:
+    creates: "{{ ckan_home_directory }}/default/activate"
+
+# ckan deploy
+- name: Setup to CKAN from github via pip
+  become: true
+  become_user: "{{ ckan_user_name }}"
+  pip:
+    name: "git+{{ ckan_repository_url }}@ckan-{{ ckan_version }}#egg=ckan"
+    virtualenv: "{{ ckan_home_directory }}/default"
+
+- name: Setup CKAN depend on packages
+  become: true
+  become_user: "{{ ckan_user_name }}"
+  pip:
+    requirements: requirements.txt
+    virtualenv: "{{ ckan_home_directory }}/default"
+    chdir: "{{ ckan_home_directory }}/default/src/ckan"
+
+# ckan deploy complete
+
+- name: Create directory for ckan configure files
+  file:
+    path: "{{ ckan_ini_directory }}"
+    state: directory
+    owner: "{{ ckan_user_name }}"
+    group: "{{ ckan_user_name }}"
+    mode: 0755
+
+- name: Create directory for ckan data storage
+  file:
+    path: "/home/ckan"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0755
+  when: ansible_os_family == "Debian"
+
+- name: Copy to configure file
+  become: true
+  become: "{{ ckan_user_name }}"
+  template:
+    src: production.ini.j2
+    dest: "{{ ckan_ini_directory }}/production.ini"
+    mode: 0644
+
+- name: Create symlink who.ini
+  file:
+    src: "{{ ckan_home_directory }}/default/src/ckan/who.ini"
+    dest: "{{ ckan_ini_directory }}/who.ini"
+    state: link
+
+- name: Copy apache.wsgi
+  become: true
+  become_user: "{{ ckan_user_name }}"
+  template:
+    src: apache.wsgi.j2
+    dest: "{{ ckan_ini_directory }}/apache.wsgi"
+    mode: 0644
+
+# Setup to solr
+- name: Remove solr schema file
+  file:
+    path: "/usr/share/solr/conf/schema.xml"
+    state: absent
+
+- name: Copy to solr schema file
+  copy:
+    src: schema-2.3_ja.xml
+    dest: "/usr/share/solr/conf/schema.xml"
+  ignore_errors: true
+  register: copy_schema
+
+- name: Create Symlink to solr schema file
+  file:
+    src: "{{ ckan_home_directory }}/default/src/ckan/ckan/config/solr/schema.xml"
+    dest: "/usr/share/solr/conf/schema.xml"
+    state: link
+  when: copy_schema | failed
+
+- name: Restart service
+  service:
+    name: tomcat{{ tomcat_version }}
+    state: restarted
+
+- name: Initialize database
+  become: true
+  become_user: "{{ ckan_user_name }}"
+  shell: ./paster --plugin=ckan db init -c {{ ckan_ini_directory }}/production.ini
+  args:
+    chdir: "{{ ckan_home_directory }}/default/bin"
+
+- include: configure-wsgi.yml

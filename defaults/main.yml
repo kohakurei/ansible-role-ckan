@@ -1,0 +1,31 @@
+java_servelet: "tomcat"
+
+ckan_user_name: "ckan"
+
+ckan_home_directory: "/usr/lib/ckan"
+
+ckan_version: "2.4.3"
+
+ckan_repository_url: "https://github.com/ckan/ckan.git"
+
+ckan_ini_directory: "/etc/ckan/default"
+
+ckan_data_directory: "/home/ckan"
+
+ckan_packages:
+  - "solr-{{ java_servelet }}"
+  - git
+  - subversion
+  - mercurial
+  - libxslt1.1
+  - libxml2-dev
+  - libxml-commons-external-java
+  - python-dev
+  - python-virtualenv
+  - libxalan2-java
+  - sysv-rc-conf
+  - build-essential
+
+database_name: "ckan_default"
+db_user_name: "ckan_default"
+db_user_password: "ckan_default"

@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  author: kohakurei
+  description: CKAN
+  license: MIT
+  min_ansible_version: 1.9.6
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 16.04
+  galaxy_tags:
+    - ckan
+
+dependencies:
+  - ansible-role-apache
+  - ansible-role-postgresql
+  - ansible-role-tomcat

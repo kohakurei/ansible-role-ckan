@@ -1,0 +1,243 @@
+---
+- include: Debian.yml
+  when: ansible_os_family == "Debian"
+
+- name: add yum repository
+  yum:
+    name: http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+
+- name: install package
+  yum: name={{ item }} state=present
+  with_items:
+       - "{{ ckan_packages }}"
+
+- name: create ckan user
+  user: name=ckan home={{ CKAN_HOME }} shell=/sbin/nologin move_home=yes
+
+- name: ckan home permission changed
+  file: path={{ CKAN_HOME }} mode=0755
+
+# create postgresql database for ckan
+- name: create ckan user into postgresql
+  sudo_user: postgres
+  postgresql_user:
+    name: "{{ dbuser }}"
+    password: "{{ dbpassword }}"
+    role_attr_flags: NOSUPERUSER,NOCREATEROLE,NOCREATEDB
+
+- name: create ckan db
+  sudo_user: postgres
+  postgresql_db:
+    name: "{{ dbname }}"
+    owner: "{{ dbuser }}"
+    encoding: 'UTF-8'
+
+- name: create virtualenv
+  sudo_user: ckan
+  command: virtualenv --no-site-packages {{ CKAN_HOME }}/default
+  args:
+    creates: "{{ CKAN_HOME }}/default"
+
+## CKAN Clone from github
+- name: CKAN clone from github
+  sudo_user: ckan
+  git: repo=https://github.com/ckan/ckan.git version=release-v2.4.0 dest=/usr/lib/ckan/default/src/ckan
+
+- name: Install CKAN on virtualenv
+  sudo_user: ckan
+  command: chdir=/usr/lib/ckan/default/src/ckan ../../bin/python setup.py develop
+
+##
+#   run to host machine is under the proxy environment
+##
+- name: Install latest pip and setuptools ( under proxy environment )
+  sudo_user: ckan
+  shell: chdir="{{ CKAN_HOME }}" ./default/bin/pip install pip setuptools --upgrade --proxy="http://{{ PROXY }}"
+  when: ISPROXY
+
+- name: Install pip-pbr before install requirements package ( under proxy environment )
+  sudo_user: ckan
+  shell: chdir="{{ CKAN_HOME }}" ./default/bin/pip install pbr==0.8.2 --proxy="http://{{ PROXY }}" --proxy="https://{{ PROXY }}"
+  when: ISPROXY
+
+- name: Install requirements Package of CKAN ( under proxy environment )
+  sudo_user: ckan
+  shell: chdir="{{ CKAN_HOME }}/default/src/ckan" ../../bin/pip install -r requirements.txt --proxy="http://{{ PROXY }}" --proxy="https://{{ PROXY }}"
+  environment:
+      PATH: "/usr/pgsql-9.3/bin:{{ ansible_env.PATH }}"
+  when: ISPROXY
+
+##
+#   run to host machine is not under the proxy environment
+##
+- name: Install latest pip and setuptools
+  sudo_user: ckan
+  shell: chdir="{{ CKAN_HOME }}" ./default/bin/pip install pip setuptools --upgrade
+  when: not ISPROXY
+
+- name: Install Depend Package of CKAN
+  sudo_user: ckan
+  shell: chdir="{{ CKAN_HOME }}/default/src/ckan" ../../bin/pip install -r requirements.txt
+  environment:
+      PATH: "/usr/pgsql-9.3/bin:{{ ansible_env.PATH }}"
+  when: not ISPROXY
+
+- name: setup ckan
+  file:
+    path: "{{ CKAN_INI_HOME }}"
+    state: directory
+    owner: ckan
+    group: ckan
+    mode: 0755
+
+- name: copy to template file
+  template:
+    src: production.ini.j2
+    dest: "{{ CKAN_INI_HOME }}/production.ini"
+    owner: ckan
+    group: ckan
+    mode: 0644
+
+- name: make storage directory
+  file:
+    path: /home/ckan
+    state: directory
+    owner: apache
+    group: apache
+    mode: 0755
+
+
+##
+#   Setup to Solr
+##
+- name: make Directory for Solr
+  tags: solr
+  file: path="{{ item[1] }}/{{ item[0] }}" state=directory owner=tomcat group=tomcat
+  with_nested:
+    - ['core0', 'core1']
+    - ['/usr/share/solr', '/var/lib/solr/data', '/etc/solr']
+
+- name: copy solr package
+  tags: solr
+  copy: src="solr-package.tgz" dest="/tmp"
+
+- name: gunzip
+  tags: solr
+  shell: cd /tmp && tar zxvf solr-package.tgz
+
+# Dest to any files
+- name: Copy to Solr.war
+  tags: solr
+  shell:  cp /tmp/solr-package/solr.war /usr/share/tomcat6/webapps
+
+- name: Copy to Logging packages
+  tags: solr
+  shell: cp /tmp/solr-package/lib/* /usr/share/tomcat6/lib
+
+- name: Copy to Schema Define lib
+  tags: solr
+  shell: cp -r /tmp/solr-package/usr/share/solr /usr/share
+  sudo_user: tomcat
+
+- name: Copy to Solr Core
+  tags: solr
+  shell: cp -r /tmp/solr-package/etc/solr/* /etc/solr
+
+- name: Copy to Schema.xml
+  tags: solr
+  copy: src=schema-2.3_ja.xml dest=/etc/solr/{{ item }}/conf/schema.xml
+  with_items:
+      - core0
+      - core1
+
+- name: create symlink
+  tags: solr
+  file:
+    src: "/etc/solr/core{{ item }}/conf"
+    dest: "/usr/share/solr/core{{ item }}/conf"
+    state: link
+  with_items:
+    - 0
+    - 1
+
+- name: copy to schema-2.3_ja.xml
+  tags: solr
+  copy:
+      src: schema-2.3_ja.xml
+      dest: /etc/solr/core{{ item }}/conf/schema.xml
+  with_items:
+      - 0
+      - 1
+
+- name: copy template
+  tags: solr
+  template:
+    src: "{{ item.source }}_solr.xml.j2"
+    dest: "{{ item.dest }}/solr.xml"
+    owner: tomcat
+    group: tomcat
+  with_items:
+    - { source: localhost, dest: /usr/share/tomcat6/conf/Catalina/localhost }
+    - { source: share, dest: /usr/share/solr }
+
+- name: change owner to tomcat for solr directory
+  tags: solr
+  file: path="{{ item }}/solr" state=directory owner=tomcat group=tomcat mode=0755 recurse=yes
+  with_items:
+    - /usr/share
+    - /var/lib
+
+- name: tomcat restarted
+  service: name=tomcat6 state=restarted
+
+- name: stop interval time
+  pause: seconds=60
+##
+#   Solr Setup End
+##
+
+##
+#   Apache  Setup
+##
+- name: symlink to who.ini
+  file:
+    src: "{{ CKAN_HOME }}/default/src/ckan/who.ini"
+    dest: "{{ CKAN_INI_HOME }}/who.ini"
+    state: link
+
+- name: create apache.wsgi
+  template:
+    src: apache.wsgi.j2
+    dest: "{{ CKAN_INI_HOME }}/apache.wsgi"
+    owner: ckan
+    group: ckan
+    mode: 0664
+
+# mod_wsgi setup
+- name: create apache config for ckan
+  template:
+    src: ckan_default.conf.j2
+    dest: /etc/httpd/conf.d/ckan_default.conf
+    mode: 0644
+
+# ckan db initialized
+- name: initialize to ckan database using paster command
+  sudo_user: ckan
+  #shell: chdir="{{ CKAN_HOME }}/default/src/ckan" ../../bin/paster db init -c /etc/ckan/default/production.ini
+  shell: chdir="{{ CKAN_HOME }}/default/src/ckan" ../../bin/paster db load /vagrant/pg_dump.dump -c /etc/ckan/default/production.ini
+  environment:
+      http_proxy: ""
+  ignore_errors: yes
+  when: ISPROXY
+
+- name: initialize to ckan database using paster command
+  sudo_user: ckan
+  #shell: chdir="{{ CKAN_HOME }}/default/src/ckan" ../../bin/paster db init -c /etc/ckan/default/production.ini
+  shell: chdir="{{ CKAN_HOME }}/default/src/ckan" ../../bin/paster db load /vagrant/pg_dump.dump -c /etc/ckan/default/production.ini
+  ignore_errors: yes
+  when: not ISPROXY
+
+- name: httpd restarted
+  service:
+    name: httpd
+    state: restarted

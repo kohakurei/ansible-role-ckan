@@ -1,0 +1,25 @@
+---
+# create user
+- name: Create postgresql user.
+  become: true
+  become_user: "{{ postgresql_superuser_name }}"
+  postgresql_user:
+    name: "{{ db_user_name }}"
+    password: "{{ db_user_password }}"
+    role_attr_flags: "{{ postgresql_user_roles }}"
+    encrypted: yes
+    state: present
+
+# create database
+- name: Create database.
+  become: true
+  become_user: "{{ postgresql_superuser_name }}"
+  postgresql_db:
+    name: "{{ database_name }}"
+    encoding: "{{ postgresql_db_encoding }}"
+    owner: "{{ db_user_name }}"
+
+- name: Restart postgresql server.
+  service:
+    name: postgresql
+    state: restarted
