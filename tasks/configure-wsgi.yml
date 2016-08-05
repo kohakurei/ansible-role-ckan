@@ -11,6 +11,7 @@
     src: /etc/apache2/sites-available/000-ckan_default.conf
     dest: /etc/apache2/sites-enabled/000-ckan_default.conf
     state: link
+  when: ansible_os_family == "Debian"
 
 #- name: Enabled virtualhost
 #  command: a2ensite ckan_default

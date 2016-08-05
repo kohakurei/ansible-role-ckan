@@ -1,5 +1,5 @@
-java_servelet: "tomcat"
-
+---
+##CKAN Setting
 ckan_user_name: "ckan"
 
 ckan_home_directory: "/usr/lib/ckan"
@@ -12,8 +12,43 @@ ckan_ini_directory: "/etc/ckan/default"
 
 ckan_data_directory: "/home/ckan"
 
+## PostgreSQL Setting
+postgresql_version: "9.3"
+
+postgresql_superuser_name: "postgres"
+
+postgresql_user_role: "SUPERUSER"
+
+postgresql_db_encoding: "UTF8"
+
+postgresql_user_connection:
+  - name: "{{ postgresql_user_name }}"
+    type: "local"
+    database: "all"
+
+## Solr Setting
+java_version: "8"
+
+solr_mirror: "http://ftp.jaist.ac.jp/pub"
+
+# select is 5.5.1 or 6.0.1
+solr_version: "5.5.1"
+
+solr_work: /root
+
+solr_core_name: "collection1"
+
+solr_create_core: True
+
+## Common Setting
+postgresql_packages:
+  - postgresql-{{ postgresql_version }}
+  - postgresql-contrib-{{ postgresql_version }}
+  - postgresql-server-dev-{{ postgresql_version }}
+
 ckan_packages:
-  - "solr-{{ java_servelet }}"
+  - apache2
+  - libapache2-mod-wsgi
   - git
   - subversion
   - mercurial
@@ -25,7 +60,10 @@ ckan_packages:
   - libxalan2-java
   - sysv-rc-conf
   - build-essential
+  - python-psycopg2
 
 database_name: "ckan_default"
+
 db_user_name: "ckan_default"
+
 db_user_password: "ckan_default"

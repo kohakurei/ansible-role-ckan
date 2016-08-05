@@ -1,7 +1,8 @@
 ---
-- name: Update package
-  apt:
-    update_cache: yes
+- include: setup-pgsql.yml
+
+# db createed from ansible role
+- include: create-database.yml
 
 - name: Ensure packages
   apt:
@@ -12,9 +13,6 @@
     - "{{ ckan_packages }}"
 
 - include: create-user.yml
-
-# db createed from ansible role
-- include: create-database.yml
 
 - name: create virtualenv
   become: true
@@ -80,30 +78,7 @@
     dest: "{{ ckan_ini_directory }}/apache.wsgi"
     mode: 0644
 
-# Setup to solr
-- name: Remove solr schema file
-  file:
-    path: "/usr/share/solr/conf/schema.xml"
-    state: absent
-
-- name: Copy to solr schema file
-  copy:
-    src: schema-2.3_ja.xml
-    dest: "/usr/share/solr/conf/schema.xml"
-  ignore_errors: true
-  register: copy_schema
-
-- name: Create Symlink to solr schema file
-  file:
-    src: "{{ ckan_home_directory }}/default/src/ckan/ckan/config/solr/schema.xml"
-    dest: "/usr/share/solr/conf/schema.xml"
-    state: link
-  when: copy_schema | failed
-
-- name: Restart service
-  service:
-    name: tomcat{{ tomcat_version }}
-    state: restarted
+- include: setup-solr.yml
 
 - name: Initialize database
   become: true

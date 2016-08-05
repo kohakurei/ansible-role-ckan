@@ -1,0 +1,37 @@
+---
+- include: install-java.yml
+
+- name: Check solr version
+  fail:
+    msg: "solr-{{ solr_version }} is not exist package in mirror sites."
+  when:
+    - solr_version != '5.5.1'
+    - solr_version != '6.0.1'
+
+- name: Download solr package
+  get_url:
+    url: "{{ solr_mirror }}/apache/lucene/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz"
+    dest: "{{ solr_work }}/solr-{{ solr_version }}.tgz"
+
+- name: Unarchive solr package
+  unarchive:
+    src: "{{ solr_work }}/solr-{{ solr_version }}.tgz"
+    dest: "{{ solr_work }}"
+
+- name: Installing solr
+  shell: "bin/install_solr_service.sh ../solr-{{ solr_version }}.tgz"
+  args:
+    chdir: "{{ solr_work }}/solr-{{ solr_version }}"
+    creates: "/var/solr"
+
+# Create core
+- include: create-solr-core.yml
+  become: True
+  become: solr
+  when:
+    - "{{ solr_create_core }} == True"
+
+- name: Restart solr service
+  service:
+    name: solr
+    state: restarted

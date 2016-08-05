@@ -11,7 +11,4 @@ galaxy_info:
   galaxy_tags:
     - ckan
 
-dependencies:
-  - ansible-role-apache
-  - ansible-role-postgresql
-  - ansible-role-tomcat
+dependencies: []

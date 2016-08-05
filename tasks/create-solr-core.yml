@@ -1,0 +1,22 @@
+---
+# coreの設置
+- name: Create directory
+  shell: |
+    cd "/opt/solr/bin/solr create -c {{ solr_core_name }}"
+
+- name: remove managed-schema
+  shell: |
+    rm -f /var/solr/data/{{ solr_core_name }}/conf/managed-schema
+
+- name: copy to solrconfig.xml
+  template:
+    src: "solrconfig.xml.j2"
+    dest: "/var/solr/data/{{ solr_core_name }}/conf/solrconfig.xml"
+
+- name: Copy schema.xml
+  copy:
+    src: schema-2.3_ja.xml
+    dest: "/var/solr/data/{{ solr_core_name }}/conf/schema.xml"
+    owner: solr
+    group: solr
+    mode: 0644
