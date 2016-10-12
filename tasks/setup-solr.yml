@@ -7,12 +7,19 @@
   when:
     - solr_version != '5.5.1'
     - solr_version != '6.0.1'
+    - solr_version != '6.1.0'
+
+- name: Check files
+  stat: "path=/root/solr-{{ solr_version }}.tgz"
+  register: is_file
 
 - name: Download solr package
   get_url:
-    url: "{{ solr_mirror }}/apache/lucene/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz"
+    url: "{{ solr_mirror }}/dist/lucene/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz"
     dest: "{{ solr_work }}/solr-{{ solr_version }}.tgz"
-
+  when:
+    - is_file.stat.exists == False
+    
 - name: Unarchive solr package
   unarchive:
     src: "{{ solr_work }}/solr-{{ solr_version }}.tgz"
@@ -26,8 +33,6 @@
 
 # Create core
 - include: create-solr-core.yml
-  become: True
-  become: solr
   when:
     - "{{ solr_create_core }} == True"
 

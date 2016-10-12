@@ -4,7 +4,7 @@ ckan_user_name: "ckan"
 
 ckan_home_directory: "/usr/lib/ckan"
 
-ckan_version: "2.4.3"
+ckan_version: "2.5.2"
 
 ckan_repository_url: "https://github.com/ckan/ckan.git"
 
@@ -17,7 +17,7 @@ postgresql_version: "9.3"
 
 postgresql_superuser_name: "postgres"
 
-postgresql_user_role: "SUPERUSER"
+postgresql_user_roles: "SUPERUSER"
 
 postgresql_db_encoding: "UTF8"
 
@@ -29,10 +29,10 @@ postgresql_user_connection:
 ## Solr Setting
 java_version: "8"
 
-solr_mirror: "http://ftp.jaist.ac.jp/pub"
+solr_mirror: "http://archive.apache.org"
 
 # select is 5.5.1 or 6.0.1
-solr_version: "5.5.1"
+solr_version: "6.1.0"
 
 solr_work: /root
 
@@ -45,6 +45,7 @@ postgresql_packages:
   - postgresql-{{ postgresql_version }}
   - postgresql-contrib-{{ postgresql_version }}
   - postgresql-server-dev-{{ postgresql_version }}
+  - python-psycopg2
 
 ckan_packages:
   - apache2

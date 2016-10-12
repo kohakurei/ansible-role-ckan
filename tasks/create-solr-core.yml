@@ -1,14 +1,20 @@
 ---
 # coreの設置
-- name: Create directory
+- name: Create core
+  become: true
+  become_user: solr
   shell: |
-    cd "/opt/solr/bin/solr create -c {{ solr_core_name }}"
+    /opt/solr/bin/solr create -c {{ solr_core_name }}
 
 - name: remove managed-schema
+  become: true
+  become_user: solr
   shell: |
     rm -f /var/solr/data/{{ solr_core_name }}/conf/managed-schema
 
 - name: copy to solrconfig.xml
+  become: yes
+  become: solr
   template:
     src: "solrconfig.xml.j2"
     dest: "/var/solr/data/{{ solr_core_name }}/conf/solrconfig.xml"

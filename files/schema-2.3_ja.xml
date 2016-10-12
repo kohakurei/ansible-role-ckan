@@ -80,9 +80,9 @@ schema. In this case the version should be set to the next CKAN version number.
         <analyzer>
             <tokenizer class="solr.JapaneseTokenizerFactory" mode="search"/>
             <filter class="solr.JapaneseBaseFormFilterFactory"/>
-            <filter class="solr.JapanesePartOfSpeechStopFilterFactory" tags="lang/stoptags_ja.txt" enablePositionIncrements="true"/>
+            <filter class="solr.JapanesePartOfSpeechStopFilterFactory" tags="lang/stoptags_ja.txt" />
             <filter class="solr.CJKWidthFilterFactory"/>
-            <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_ja.txt" enablePositionIncrements="true" />
+            <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_ja.txt" />
             <filter class="solr.JapaneseKatakanaStemFilterFactory" minimumLength="4"/>
             <filter class="solr.LowerCaseFilterFactory"/>
         </analyzer>

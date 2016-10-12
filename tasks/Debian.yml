@@ -1,9 +1,6 @@
 ---
 - include: setup-pgsql.yml
 
-# db createed from ansible role
-- include: create-database.yml
-
 - name: Ensure packages
   apt:
     name: "{{ item }}"
@@ -11,6 +8,9 @@
     update_cache: yes
   with_items:
     - "{{ ckan_packages }}"
+
+# db createed from ansible role
+- include: create-database.yml
 
 - include: create-user.yml
 
